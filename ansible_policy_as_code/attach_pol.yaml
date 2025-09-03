@@ -1,0 +1,19 @@
+---
+- name: Attach IAM role to an existing EC2 instance
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    instance_id: i-0958efb750d9c9edb  # Replace with your EC2 instance ID
+    instance_profile_name: arn:aws:iam::981425614621:role/s3_read-only_access # Replace with your IAM instance profile name
+
+  tasks:
+    - name: Attach/Replace IAM instance profile
+      amazon.aws.ec2_instance:
+        instance_ids:
+          - "{{ instance_id }}"
+        state: running # Ensure the instance is running
+        instance_profile:
+          name: "{{ instance_profile_name }}"
+      delegate_to: localhost

@@ -1,0 +1,41 @@
+---
+- hosts: all
+  become: true
+  tasks:
+    - name: Make sure the packages openssh and openssl are up to date
+      ansible.builtin.apt:
+        name: "{{ item }}"
+        state: latest
+      loop:
+        - openssh
+        - openssl
+      ignore_errors: yes #Ansible will ignore any errors in this task and proceed further with remaining tasks
+    - name: Check if docker is installed
+      ansible.builtin.command: docker --version
+      register: output ### register will store the information of the above command docker -version details, like successful or not in the defined variable "output"
+      ignore_errors: yes
+    - ansible.builtin.debug:   ### to print the output variable details for debugging
+        var: output
+    - name: Install Docker
+      ansible.builtin.apt:
+        name: docker.io
+        state: present
+      when: output.failed  ### Install Docker task will execute only when output variable (task2) fail
+        
+###################################################
+#Handling only one particular type of error
+###################################################
+
+    - name: Check if a file exists in temp
+      ansible.builtin.command: ls /tmp/abcdefgh
+      register: output1
+      failed_when:
+        - output1.rc ==0
+        - '"No such" not in output1.stdout'
+
+          
+#For the same ls command we got two types of errors as below, the above task ignores/handles error only for no such file type of ls operation but throws an error for "Permission denied"          
+#ubuntu@ip-172-31-12-162:~$ ls vamshi
+#ls: cannot access 'vamshi': No such file or directory
+#ubuntu@ip-172-31-12-162:~$ ls /root
+#ls: cannot open directory '/root': Permission denied

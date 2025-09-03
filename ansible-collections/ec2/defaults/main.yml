@@ -1,0 +1,7 @@
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for ec2
+type: t2.micro
+sec_group: launch-wizard-1
+region: ap-south-1
+ami_id: ami-0f918f7e67a3323f0

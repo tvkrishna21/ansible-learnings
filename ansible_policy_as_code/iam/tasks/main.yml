@@ -1,0 +1,10 @@
+---
+# tasks file for iam
+- name: Attach IAM policy to the vm
+  amazon.aws.ec2_instance: 
+    instance_ids: 
+      - "{{ instance_id }}"
+    state: running
+    iam_instance_profile:
+      arn: "{{ profile }}"
+  delegate_to: localhost

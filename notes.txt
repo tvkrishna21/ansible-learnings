@@ -1,0 +1,450 @@
+Ansible Installation steps
+
+Installation Doc: https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html
+
+For your control node (the machine that runs Ansible), you can use nearly any UNIX-like machine with Python installed. This includes Red Hat, Debian, Ubuntu, macOS, BSDs, and Windows under a Windows Subsystem for Linux (WSL) distribution. Windows without WSL is not natively supported as a control node; see Matt Davis’ blog post for more information.
+
+Steps:
+
+1. Create an EC2 instance
+2. Install Python in ec2 instance (Python is prerequite for ansible)
+3. Python install command yum install -y python3 (for most of the vm's python will be installed by default, try updating the vm first with yum update -y and check for python version by python3 --version)
+4. Python3 is installed by default, but pip3 is not available, then install the pip3 using "python3 -m ensurepip --default-pip" will install pip which supports the existing python version.
+5. Install the Ansible by "pip3 install ansible"
+Installation in ubuntu based ec2
+apt update
+apt install software-properties-common
+add-apt-repository --yes --update ppa:ansible/ansible
+apt install ansible
+6. Verify the Ansible installation by command "ansible --version"
+
+Ansible in VScode IDE
+
+1. Install the YAML extension provided by Redhat (official) (we write Ansible in yaml format and the yaml will internally convert the syntax to python to run and execute)
+2. Install the Ansible extension provided by Redhat (official)
+
+Create another instance in ec2 for Ansible operations
+
+###########################
+Terminology in this doc:
+###########################
+Ansible Control Node: This is a ec2 instance where Python, Ansible is installed
+Ansible Manage Node: This is a ec2 instance where Ansible operations are performed by connecting from Ansible Control node
+
+###########################
+Setup Password Auth
+###########################
+
+1. Login to ec2 vm where ansible is installed (Ansible Control Node)
+2. Copy the key-pair.pem file to Ansible control node, 
+ssh-copy-id -f "-o IdentityFile  <path of .pem file is stored>" instance-username@instance-public-ip
+ssh-copy-id -f "-o IdentityFile /home/ubuntu/ssh/first-key-pair.pem" 'ubuntu@13.232.84.0'
+
+For the first time Ansible Control VM will ask to perform below operation
+Now try logging into the machine, with:   "ssh -o ' IdentityFile /home/ubuntu/ssh/first-key-pair.pem' 'ubuntu@13.232.84.0'"
+and check to make sure that only the key(s) you wanted were added.
+
+Next time onwards we can connect to Ansible Manage node from Ansible control node by the command
+ssh instance-username@instance-public-ip
+ssh ubuntu@13.232.84.0
+
+By this we have enabled password less authentication from Ansible Control node to Ansible Manage node
+
+3. Creating my own inventory file in Ansible control node as my_inventory.ini and add the Ansible Manage node as ubuntu@13.232.84.0
+root@ip-172-31-11-125:/home/ubuntu/ansible# cat my_inventory.ini 
+ubuntu@13.232.84.0
+
+4. Run the command to perform basic Ansible Adhoc ping operation on the host there in inventory file
+
+ansible -i my_inventory.ini -m ping all
+
+Below is output of command
+root@ip-172-31-11-125:/home/ubuntu/ansible# ansible -i my_inventory.ini -m ping all
+[WARNING]: Platform linux on host ubuntu@13.232.84.0 is using the discovered Python interpreter at /usr/bin/python3.12, but future
+installation of another Python interpreter could change the meaning of that path. See https://docs.ansible.com/ansible-
+core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ubuntu@13.232.84.0 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python3.12"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+
+------------------------------------------------------------------------------------------------------------------
+In Ansible we can perform operations from Control node to manage nodes by two ways
+1. Playbook --> Yaml format used to follow step by step process to perform operations
+2. Adhoc commands --> These are performed form cli to perform simple operations like one-off operations like check connectivity
+
+Another way of performing operations is Adhoc commands
+root@ip-172-31-11-125:/home/ubuntu/ansible# cat my_inventory.ini 
+[web-servers]
+ubuntu@13.232.84.0
+#vm-2
+#vm-3
+
+Below are the examples of some Adhoc Ansible Commands
+1. Checks for connectivity like ping, the Command "ansible -i my_inventory.ini -m ping web-servers" --->  execute in all the web-servers
+2. Perform update operation in all the web-servers group: ansible -i my_inventory.ini -m shell -a "sudo apt update" web-servers 
+
+Detailed documentation for Adhoc commands ---> https://docs.ansible.com/ansible/latest/command_guide/intro_adhoc.html#why-use-ad-hoc-commands
+------------------------------------------------------------------------------------------------------------------
+
+Performing Ansible operations from Control node to manage node with playboook
+
+Created a playbook my_playbook_apache_install.yaml  which will install apache2 and copies the index.html to /var/www/html dir to all the hosts mentioned under web-servers
+
+Index.html---> https://raw.githubusercontent.com/iam-veeramalla/ansible-zero-to-hero/refs/heads/main/Day-03/03-first-playbook/index.html
+
+command to under the playbook is "ansible-playbook -i my_inventory.ini my_playbook_apache_install.yaml"
+
+output of the command is
+
+
+root@ip-172-31-11-125:/home/ubuntu/ansible# ansible-playbook -i my_inventory.ini my_playbook_apache_install.yaml 
+[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
+
+PLAY [web-servers] *****************************************************************************************************************
+
+TASK [Gathering Facts] *************************************************************************************************************
+[WARNING]: Platform linux on host ubuntu@13.232.84.0 is using the discovered Python interpreter at /usr/bin/python3.12, but future
+installation of another Python interpreter could change the meaning of that path. See https://docs.ansible.com/ansible-
+core/2.18/reference_appendices/interpreter_discovery.html for more information.
+ok: [ubuntu@13.232.84.0]
+
+TASK [Install Apache Httpd] ********************************************************************************************************
+changed: [ubuntu@13.232.84.0]
+
+TASK [Copy the Index file with owner and permissions] ******************************************************************************
+changed: [ubuntu@13.232.84.0]
+
+PLAY RECAP *************************************************************************************************************************
+ubuntu@13.232.84.0         : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+root@ip-172-31-11-125:/home/ubuntu/ansible# 
+
+------------------------------------------------------------------------------------------------------------------
+
+Ansible roles:
+
+Ansible roles are for reusability and modularize the logic of playbook, roles can be created by the command "ansible-galaxy role init <role-name>"
+
+root@ip-172-31-11-125:/home/ubuntu/ansible# ansible-galaxy role init httpd
+- Role httpd was created successfully
+root@ip-172-31-11-125:/home/ubuntu/ansible# 
+root@ip-172-31-11-125:/home/ubuntu/ansible# ls -l
+total 16
+drwxr-xr-x 10 root root 4096 Aug 13 17:33 httpd
+
+root@ip-172-31-11-125:/home/ubuntu/ansible/httpd# ls -l
+total 36
+-rw-r--r-- 1 root root 1328 Aug 13 17:33 README.md
+drwxr-xr-x 2 root root 4096 Aug 13 17:33 defaults
+drwxr-xr-x 2 root root 4096 Aug 13 17:33 files
+drwxr-xr-x 2 root root 4096 Aug 13 17:33 handlers
+drwxr-xr-x 2 root root 4096 Aug 13 17:33 meta
+drwxr-xr-x 2 root root 4096 Aug 13 17:33 tasks
+drwxr-xr-x 2 root root 4096 Aug 13 17:33 templates
+drwxr-xr-x 2 root root 4096 Aug 13 17:33 tests
+drwxr-xr-x 2 root root 4096 Aug 13 17:33 vars
+
+Converting the my_playbook_apache_install.yaml to role
+
+1. copy the index file to <role-name>/files "cp index.html httpd/files/"
+2. add tasks from my_playbook_apache_install.yaml to <role-name>/tasks
+3. Create the playbook.yaml as my_httpd_role_playbook.yaml to point the tasks and files of the role we created
+root@ip-172-31-11-125:/home/ubuntu/ansible# cat my_httpd_role_playbook.yaml 
+---
+- hosts: [web-servers]
+  become: true
+  roles:
+    - httpd
+4. Update the src file in tasks main.yml to from src: index.html to src: files/index.html as we placed our index.html file in files folder of the httpd role we Created
+5. Run the command "ansible-playbook -i my_inventory.ini my_httpd_role_playbook.yaml" to perform the ansible play defined in httpd role (tasks and files)
+
+
+-----------------------------------------------------------------------------------------------------------------------------
+
+Ansible galaxy roles
+
+Sign up for ansible galaxy using github credentials, https://galaxy.ansible.com/ui/standalone/roles/
+Search any role available in galaxy, ex: docker
+https://galaxy.ansible.com/ui/standalone/roles/bsmeding/docker/install/
+Copy the Installation command "ansible-galaxy role install bsmeding.docker", this is download the docker role to the control node
+The docker-role will be present under ~/.ansible/roles path 
+root@ip-172-31-11-125:/home/ubuntu/ansible# ls ~/.ansible/roles/
+bsmeding.docker
+
+Create the my_docker_role_playbook.yaml to include the imported docker role as 
+---
+- hosts: [web-servers]
+  become: true
+  roles:
+    - bsmeding.docker
+Perform the play with playbook by the command "ansible-playbook -i my_inventory.ini my_docker_role_playbook.yaml"
+This is install the docker in the server mentioned in inventory file, the main intention of this role is it will install docker in any type of os like ubuntu, centos, rhel, Debian
+We can see the role source code by clicking the github repo link in ansible-galaxy website for that particular role (https://github.com/bsmeding/ansible_role_docker)
+
+If we want to put our own roles in ansible galaxy first we need to put our roles in git and then import them to galaxy
+
+---
+
+Import httpd role we created to galaxy
+1. create a repo in git for the role, "ansible-role-repo"
+2. In role dir (httpd), perform git init and then "git remote add origin https://github.com/tvkrishna21/ansible-role-repo.git" to connect to git repo from the role
+3. Verify the details by "git remote -v", it will like 
+root@ip-172-31-11-125:/home/ubuntu/ansible/httpd# git remote -v
+origin	https://github.com/tvkrishna21/ansible-role-repo.git (fetch)
+origin	https://github.com/tvkrishna21/ansible-role-repo.git (push)
+4. git add .
+5. git commit -m "Import role"
+6. Create ssh key from settings from the git account, navigate ssh and gpg keys and create a ssh key by copying id_rsa.pub from cat ~/.ssh/id_rsa.pub 
+7. git push origin main --> to push the code to git repo
+8. Now we have our httpd role in git, we need to import to ansible-galaxy by going to ansible-galaxy-> collection-> API Token -> Load Token -> copy token
+9. Run this command "ansible-galaxy import tvkrishna21 ansible-role-repo --token <token-that-we-have-copied-from-ansible-galaxy-api>" to import to galaxy, it will appear as tvkrishna21.repo
+"ansible-galaxy import <github username> <git repo where we have our role> --token <token-that-we-have-copied-from-ansible-galaxy-api>"
+
+-----------------------------------------------------------------------------------------------------------------------------
+Ansible Collections
+
+Ansible will connect with Cloud providers like aws, gcp and network providers like cisco, f5 and perform the operations because these are offered as PaaS, but Ansible will not do ssh but like connect via API's and this API connection should be installed first in Ansible Control node
+To know the collection installation command, refer the official ansible doc https://docs.ansible.com/ansible/latest/collections/index.html and find the respective collection command in ansible-galaxy --> collections --> namespaces --> search "amazon" --> "aws" --> 
+copy the installation command "ansible-galaxy collection install amazon.aws" and run it under ansible control node, as the collection belongs to aws check for the documentation in galaxy it say that boto3 should be installed to perform this operation
+check for boto3 by the command "pip3 show boto3" will return the version of boto3, if boto3 is not available install by the command "pip3 install boto3"
+To view the collection we imported run the command "ansible-galaxy collection list"
+
+Now to perform ansible operations on aws resources like ec2, goto ansible doc and find the respective collection module ex: https://docs.ansible.com/ansible/latest/collections/amazon/aws/ec2_instance_module.html#ansible-collections-amazon-aws-ec2-instance-module
+"To use it in a playbook, specify: amazon.aws.ec2_instance.", look for examples in the same page
+
+Ansible vault 
+We need to store the aws account related aws_access_key and aws_secret_key in vault,
+1. Create a ec2 role by "ansible-galaxy role init ec2"
+2. As the ansible runs on control node to perform operations, the host in playbook should be defined as localhost and connection as local (look for my_collection_createec2_playbook.yaml file for more details)
+3. Generate a random password and encode with base64 by the command "openssl rand -base64 2048 > vault.pass" will create and store the password in vault.pass file (we can use our own password and base64 it)
+4. run the command " ansible-vault create group_vars/all/pass.yml --vault-password-file vault.pass " it will ask for credentials to store in file, add the aws_access_key and aws_secret_key in the file, goto aws iam user --> security credentials --> Access keys --> create a access key
+5. Copy the access key and secret access key and paste it the file respectively and save and close the file
+root@ip-172-31-12-162:/home/ubuntu/ansible/ec2# ansible-vault create group_vars/all/pass.yml --vault-password-file vault.pass
+[WARNING]: group_vars/all does not exist, creating...
+6. To perform any edit to the file "ansible-vault edit group_vars/all/pass.yml --vault-password-file vault.pass" 
+7. To view the vault credentials "ansible-vault view ec2/group_vars/all/pass.yml --vault-password vault.pass"
+8. "ansible-playbook -i my_inventory.ini my_collection_createec2_playbook.yaml --vault-password-file vault.pass" command will run the collection by taking the ansible-vault file with its password
+
+
+
+*****
+If we placed our aws credentials under a file in group_vars/all/<file-name.yml> ---> then this file can be used by all the hosts, not aws credentials, we can have any variables in group_vars/all folder can be accessed by all
+
+root@ip-172-31-12-162:/home/ubuntu/ansible# ls -l
+total 20
+drwxr-xr-x 11 root root 4096 Aug 14 10:48 ec2  ############## Role defined for collection############
+drwx------  3 root root 4096 Aug 14 10:50 group_vars ######## Ansible vault file stord in group_vars/all/pass.yml ############
+-rw-r--r--  1 root root  186 Aug 14 10:44 my_collection_createec2_playbook.yaml
+-rw-r--r--  1 root root   32 Aug 14 07:47 my_inventory.ini
+-rw-r--r--  1 root root 2775 Aug 14 08:13 vault.pass
+
+
+********** output of the command*************
+root@ip-172-31-12-162:/home/ubuntu/ansible# ansible-playbook -i my_inventory.ini my_collection_createec2_playbook.yaml --vault-password-file vault.pass 
+[WARNING]: Invalid characters were found in group names but not replaced, use -vvvv to see details
+
+PLAY [localhost] *******************************************************************************************************************
+
+TASK [Gathering Facts] *************************************************************************************************************
+ok: [localhost]
+
+TASK [ec2 : start an instance with a public IP address] ****************************************************************************
+[DEPRECATION WARNING]: The network parameter has been deprecated, please use network_interfaces and/or network_interfaces_ids 
+instead. This feature will be removed from amazon.aws in a release after 2026-12-01. Deprecation warnings can be disabled by 
+setting deprecation_warnings=False in ansible.cfg.
+changed: [localhost]
+
+PLAY RECAP *************************************************************************************************************************
+localhost                  : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+************************************************
+
+-----------------------------------------------------------------------------------------------------------------------------
+Ansible Variables
+
+Variables are used for making playbooks more reusable and readable
+https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#creating-valid-variable-names
+
+we can declare variable under <role-name/defaults/main.yml> and <role-name/vars/main.yml> 
+
+Understanding variable precedence
+Ansible does apply variable precedence, and you might have a use for it. Here is the order of precedence from least to greatest (the last listed variables override all other variables):
+
+Below is the variable precedence from least preceding value first to highest preceding value last in the below order, also this can found in official doc (https://docs.ansible.com/ansible/latest/playbook_guide/playbooks_variables.html#creating-valid-variable-names)
+Command-line values (for example, -u my_user, these are not variables)
+Role defaults (as defined in Role directory structure) 
+Inventory file or script group vars 
+Inventory group_vars/all 
+Playbook group_vars/all 
+Inventory group_vars/* 
+Playbook group_vars/* 
+Inventory file or script host vars 
+Inventory host_vars/* 
+Playbook host_vars/* 
+Host facts and cached set_facts 
+Play vars
+Play vars_prompt
+Play vars_files
+Role vars (as defined in Role directory structure)
+Block vars (for tasks in block only)
+Task vars (for the task only)
+include_vars
+Registered vars and set_facts
+Role (and include_role) params
+include params
+Extra vars (for example, -e "user=my_user")(always win precedence)
+
+---
+
+
+Changed the tasks/main.yml file to accept the variables as
+root@ip-172-31-12-162:/home/ubuntu/ansible/ec2/tasks# cat main.yml 
+---
+- name: start an instance with a public IP address
+  amazon.aws.ec2_instance:
+    name: "Instance created by Ansible"
+    # key_name: "prod-ssh-key"
+    # vpc_subnet_id: subnet-013744e41e8088axx
+    instance_type: "{{ type }}"  ## variable 
+    security_group: "{{ sec_group }}"
+    region: "{{ region }}"
+    aws_access_key: "{{ec2_access_key}}"  # From vault as defined
+    aws_secret_key: "{{ec2_secret_key}}"  # From vault as defined      
+    network:
+      assign_public_ip: true
+    image_id: "{{ ami_id }}"
+---
+
+Added variables in <role/defaults/main.yml> and <role/vars/main.yml> according to precedence order variables defined under vars/main.yml takes more precedence than defaults/main.yml
+-------------------------------------------------
+root@ip-172-31-12-162:/home/ubuntu/ansible/ec2# cat defaults/main.yml 
+#SPDX-License-Identifier: MIT-0
+---
+# defaults file for ec2
+type: t2.micro
+sec_group: launch-wizard-1
+region: ap-south-1
+ami_id: ami-0f918f7e67a3323f0
+
+-------------------------------------------------
+root@ip-172-31-12-162:/home/ubuntu/ansible/ec2# cat vars/main.yml 
+#SPDX-License-Identifier: MIT-0
+---
+# vars file for ec2
+type: t3.micro
+sec_group: launch-wizard-4
+region: ap-south-1
+ami_id: ami-0f918f7e67a3323f0
+-------------------------------------------------
+
+Now if we run the command "ansible-playbook -i my_inventory.ini my_collection_createec2_playbook.yaml --vault-password-file vault.pass", ansible will take variables defined under vars/main.yml, variables defined in default will consider when no variable type is defined under vars/main.yml file
+ansible-playbook -i my_inventory.ini my_collection_createec2_playbook.yaml --vault-password-file vault.pass 
+
+ansible-playbook -i my_inventory.ini my_collection_createec2_playbook.yaml --vault-password-file vault.pass  -e type=t2.medium, here because -e which extra vars that takes highest precedence than any other variables now instance will created with type as t2.medium and remaining variables will be loaded from vars/main.yml
+
+-------------------------------------------------
+
+Ansible loops 
+
+*****************************************************************************************
+Task 
+
+Task 1
+Create three(3) EC2 instances on AWS using Ansible loops
+
+2 Instances with Ubuntu Distribution
+1 Instance with Centos Distribution
+Hint: Use connection: local on Ansible Control node.
+
+Task 2
+Set up passwordless authentication between Ansible control node and newly created instances.
+
+Task 3
+Automate the shutdown of Ubuntu Instances only using Ansible Conditionals
+
+Hint: Use when condition on ansible gather_facts
+*****************************************************************************************
+
+Task1 is includes ansible loops and importance of Ansible's Idempotency Nature, find task1 playbook.yaml file as ec2_create.yml
+file structure for task1
+1. playbook ec2_create.yml
+2. create a vault pass as task_vault.pass by "openssl rand -base64 2048 > task_vault.pass
+3. create ansible vault to store aws access key and secret access key "ansible-vault view group_vars/all/pass.yml --vault-password-file task_vault.pass"
+4. Run the ec2_create.yml playbook to create 3 vm's 1 with centos and 2 vm's as ubuntu "ansible-playbook ec2_create.yml --vault-password-file task_vault.pass"
+5. Verify the vm's in aws console this will complete the Task1
+
+Task2
+1. Setup passwordless auth from Ansible control node to all the 3 vm's (2ubuntu and 1 centos)
+2.1 ssh-copy-id -f "-o IdentityFile /home/ubuntu/ssh/first-key-pair.pem" ec2-user@15.206.167.192 --> Passwordless auth for centos vm
+2.2 ssh-copy-id -f "-o IdentityFile /home/ubuntu/ssh/first-key-pair.pem" ubuntu@13.235.19.135 ---> Passwordless auth for ubuntu vm1
+2.3 ssh-copy-id -f "-o IdentityFile /home/ubuntu/ssh/first-key-pair.pem" ubuntu@43.205.192.120 ---> Passwordless auth for ubuntu vm2
+3. This mark the task2 completed
+
+Task3
+To automate the shutdown of ubuntu instances alone using when condition
+To the os system family or any other details we can write a playbook to debug the facts about the infra in inventory.ini
+1. Create a inventory file with all the vm's in it inventory file name my_task_inventory.ini
+[all]
+ec2-user@15.206.167.192
+ubuntu@13.235.19.135
+ubuntu@43.205.192.120
+2. Debug the infra in my_task_inventory.ini to get the details of os system family
+"ansible-playbook -i my_task_inventory.ini my_debug_playook.yml --vault-password-file task_vault.pass > debug_facts.txt" gets all the facts and routes to debug_facts.txt
+In the file debug_facts.txt file search for os and get the details for ubuntu instance os family ---> "os_family": "Debian" ("os_family": "RedHat" ---> for centos image)
+root@ip-172-31-12-162:/home/ubuntu/ansible/task# cat debug_facts.txt | grep os_family
+        "os_family": "RedHat",
+        "os_family": "Debian",
+        "os_family": "Debian",
+3. Now write the playbook to use Debian in when condition and shutdown the ubuntu instances
+ansible-playbook -i my_task_inventory.ini ec2_shutdown.yml --vault-password-file task_vault.pass 
+.
+.
+.
+TASK [Shutdown Ubuntu (Debian) related instances alone] ****************************************************************************
+skipping: [ec2-user@15.206.167.192]
+changed: [ubuntu@43.205.192.120]
+changed: [ubuntu@13.235.19.135]
+
+PLAY RECAP *************************************************************************************************************************
+ec2-user@15.206.167.192    : ok=1    changed=0    unreachable=0    failed=0    skipped=1    rescued=0    ignored=0   
+ubuntu@13.235.19.135       : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+ubuntu@43.205.192.120      : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+Our ec2_shutdown.yml playbook has shutdown only the Debian Ubuntu instances
+
+We can achieve this task in another way as well
+1. Create the inventory file with centos and ubuntu instances as separate group 
+2. write the shutdown playbook without when condition and hosts pointing to ubuntu group alone, but the requirement is to test the when condition logic
+
+-------------------------------------------------
+
+Error handling in Ansible
+
+Ansible fails performing operations whenever it fails in any of the tasks
+
+---
+- hosts: all
+  become: true
+  tasks:
+  - task1 --> error in task, Ansible stops performing task2 and task3
+  - Task2
+  - task3 
+  
+Write ansible playbook to check openssh and openssl are on latest version, irrespective of openssl and openssh check if Docker is installed, if docker is not installed then install it
+
+Refer my_error-handling_playbook.yaml playbook file for errorhandling in Ansible
+
+-----------------------------------------------------------------------------------------------------------------------------
+Policy as Code PaC
+
+1. Refer to the readme and Install-and-setup docs under ansible_policy_as_code dir
+2. Install the amazon.aws collection from ansible galaxy 
+3. Create an s3 bucket for implementing the Security Policies via Ansible
+4. Install awscli in ec2 ubuntu instance by "snap install aws-cli --classic", verify the installation by "aws --version"
+5. Configure the aws by "aws configure" add access key and secret access key and then do "aws s3 ls" to list the s3 bucket we created
+root@ip-172-31-3-215:/home/ubuntu/ansible# aws s3 ls
+2025-08-15 07:04:54 my-s3-bucket-for-policy-as-code

@@ -1,0 +1,4 @@
+---
+# vars file for iam
+instance_id: i-0958efb750d9c9edb
+profile: arn:aws:iam::981425614621:role/s3_read-only_access

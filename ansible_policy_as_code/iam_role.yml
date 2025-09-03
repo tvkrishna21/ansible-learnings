@@ -1,0 +1,10 @@
+---
+- name: List all iam roles in the AWS Account
+  hosts: localhost
+  connection: local
+  tasks:
+    - name: list all iam roles
+      amazon.aws.iam_role_info:
+      register: result
+    - debug:
+        var: result.iam_roles

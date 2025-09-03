@@ -1,0 +1,5 @@
+--- 
+- hosts: localhost #ansible performs all the operations on control node itself for collections, hence host should be localhost
+  connection: local #same as above
+  roles:
+    - ec2
