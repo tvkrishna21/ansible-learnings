@@ -273,3 +273,22 @@ handlers:
   delay: 10
   until: result is succeeded
 ```
+
+#### 27. What is [servers.vars] in ansible inventory
+
+#### Ans: This construct allows you to define variables that are common to all members of a specific group, without having to define them individually for each host. This promotes reusability and simplifies inventory management, especially in larger environments.
+```
+[servers]
+server1.example.com
+server2.example.com
+
+[servers:vars]
+http_port=8080
+database_name=production_db
+```
+
+##### In this example:
+  * The servers group contains server1.example.com and server2.example.com.
+  * The [servers:vars] section defines http_port as 8080 and database_name as production_db.
+  * Both server1.example.com and server2.example.com will inherit these variables and can use them in Ansible playbooks.
+
