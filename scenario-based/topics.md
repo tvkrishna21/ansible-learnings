@@ -36,8 +36,10 @@
 #### 7. You want to run a shell command on all of the servers in your inventory. How would you do this using ansible?
 
 #### Ans: You can use the command module to run a shell command on all of the servers in your inventory.
-> - name: Run shell command
->   hosts: all
->   tasks:
->     - name: Run command
->       command: echo hello
+```
+ - name: Run shell command
+   hosts: all
+   tasks:
+     - name: Run command
+       command: echo hello
+```
