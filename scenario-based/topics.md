@@ -45,7 +45,7 @@ ansible-playbook --skip-tags '!file_server' playbook.yml
 ##### Example
 
 ```
-ansible-playbook your_playbook.yml --skip-tags "tag1,tag2"
+ansible-playbook my_app_deploy.yml --skip-tags "restart_service"
 ```
 ```
 - name: Restart web server
