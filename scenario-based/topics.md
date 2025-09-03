@@ -87,3 +87,189 @@ ansible-playbook my_app_deploy.yml --skip-tags "restart_service"
         password: "{{ 'your_password_here' | password_hash('sha512') }}" # Hashed password
         # For security, consider using Ansible Vault for sensitive data like passwords.
 ```
+
+#### 9. You want to run a playbook only on a specific host within your inventory group. What do you use?
+
+#### Ans: Use the --limit option with the hostname.
+```
+ansible-playbook playbook.yml --limit host1
+```
+
+#### 10. You want to encrypt sensitive variables like passwords. How do you do it?
+
+#### Ans: Use Ansible Vault to encrypt sensitive data.
+```
+ansible-vault encrypt secrets.yml
+```
+
+#### 11. You need to update only 2 servers at a time during a rolling deployment. What Ansible option helps?
+
+#### Ans: Use the serial keyword in your playbook.yaml file
+```
+- hosts: webservers
+  serial: 2
+```
+
+#### 12. You need to pass a variable during playbook execution. How?
+
+#### Ans: Use the --extra-vars option.
+```
+ansible-playbook playbook.yml --extra-vars "env=prod"`
+```
+
+#### 13. You want to prevent a task from running when a file doesn’t exist. What do you use?
+
+#### Ans: Use the when condition with stat module.
+```
+- name: Check file
+  stat: path=/etc/myconfig.conf
+  register: file_check
+
+- name: Do something
+  when: file_check.stat.exists
+```
+
+#### 14. You want to run a playbook step-by-step for debugging. What’s the best way?
+
+#### Ans: Use --step to confirm each task before it runs.
+```
+ansible-playbook playbook.yml --step
+```
+
+#### 15. You need to stop execution if a task fails. How?
+
+#### Ans: Tasks fail by default, but to ensure immediate failure, avoid ignore_errors.
+```
+- name: Critical task
+  command: /bin/false
+```
+
+#### 16. You want to run only one specific task in a playbook. What do you use?
+
+#### Ans: Tag the task and use --tags to run it.
+```
+- name: Install nginx
+  apt: name=nginx state=present
+  tags: nginx
+```
+```
+ansible-playbook playbook.yml --tags nginx`
+```
+
+#### 17. How do you store host-specific variables?
+
+#### Ans: Create a file in the host_vars directory with the hostname.
+```
+host_vars/
+└── web01.yml
+```
+
+#### 18. You need to loop over a list of packages to install them. How?
+
+#### Ans: Use the loop directive.
+```
+- name: Install packages
+  apt:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - nginx
+    - curl
+    - git
+```
+
+#### 19. How do you disable fact gathering to speed up playbook runs?
+
+#### Ans: Set gather_facts: false in the playbook
+```
+- hosts: all
+  gather_facts: false
+```
+
+#### 20. You want to ensure a service is restarted only if a file was changed. How?
+
+#### Ans: Use notify and handlers.
+```
+- name: Modify config
+  template: src=conf.j2 dest=/etc/app.conf
+  notify: Restart app
+
+handlers:
+  - name: Restart app
+    service: name=myapp state=restarted
+```
+
+#### 21. You want to conditionally run a task based on a variable. How?
+
+#### Ans: Use the when keyword.
+```
+- name: Install nginx on prod
+  apt: name=nginx state=present
+  when: env == "prod"
+```
+
+#### 22. You want to run a shell script on a host. What do you use?
+
+#### Ans: Use the script module or command module or shell module
+##### Shell module
+```
+- name: Run a shell script
+  hosts: your_ansible_host_group
+  tasks:
+    - name: Execute my_script.sh
+      shell: /path/to/my_script.sh arg1 arg2
+```
+##### Command module
+```
+- name: Run a command
+  hosts: your_ansible_host_group
+  tasks:
+    - name: Execute a simple command
+      command: /path/to/my_script.sh
+```
+##### Script module
+```
+- name: Run a local script on remote host
+  hosts: your_ansible_host_group
+  tasks:
+    - name: Transfer and execute script
+      script: /path/to/local/script.sh arg1 arg2
+```
+
+#### 23. You need to fetch a file from a remote server to localhost. How?
+
+#### Ans: Use the fetch module or copy module.
+```
+- name: Copy logs to local
+  fetch:
+    src: /var/log/syslog
+    dest: ./backup/
+    flat: yes
+```
+
+#### 24. You want to include tasks from another YAML file. How?
+
+#### Ans: Use the include_tasks module.
+```
+- include_tasks: security-hardening.yml
+```
+
+#### 25. You need to remove a package from all hosts. What’s the easiest way?
+
+```
+- name: Remove nginx
+  apt:
+    name: nginx
+    state: absent
+```
+
+#### 26. How do you retry a failed task a few times before marking it failed?
+
+#### Ans: Use retries with until.
+```
+- name: Wait for port
+  wait_for: port=80
+  retries: 5
+  delay: 10
+  until: result is succeeded
+```
