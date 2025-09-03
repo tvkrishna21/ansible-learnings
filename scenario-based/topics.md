@@ -42,6 +42,19 @@ ansible-playbook --skip-tags non_idempotent playbook.yml
 ```
 ansible-playbook --skip-tags '!file_server' playbook.yml
 ```
+##### Example
+
+```
+ansible-playbook your_playbook.yml --skip-tags "tag1,tag2"
+```
+```
+- name: Restart web server
+  ansible.builtin.service:
+    name: apache2
+    state: restarted
+  tags: restart_service
+```
+##### This command would execute all tasks in my_app_deploy.yml except for the one tagged restart_service.
 
 #### 7. You want to run a shell command on all of the servers in your inventory. How would you do this using ansible?
 
@@ -56,7 +69,7 @@ ansible-playbook --skip-tags '!file_server' playbook.yml
 
 #### 8. You want to create a user on all of the servers in your inventory. How would you do this using ansible?
 
-#### Ans: To create a user on a target host using Ansible, the >ansible.builtin.user module is utilized within a playbook.
+#### Ans: To create a user on a target host using Ansible, the ansible.builtin.user module is utilized within a playbook.
 ```
 ---
 - name: Create a new user on target hosts
